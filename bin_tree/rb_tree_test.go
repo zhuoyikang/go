@@ -1,4 +1,4 @@
-package alg
+package bin_tree
 
 import (
 	"testing"
