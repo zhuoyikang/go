@@ -1,0 +1,33 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"runtime"
+	"sync"
+	"time"
+)
+
+func main() {
+	var wg sync.WaitGroup
+	x := 0
+	for k := 0; k < 10000; k++ {
+		for i := 0; i < 1; i++ {
+			wg.Add(1)
+			go func() {
+				fmt.Println(x)
+				x++
+				time.Sleep(60 * time.Second)
+				wg.Done()
+			}()
+		}
+		runtime.Gosched()
+		runtime.GC()
+	}
+	wg.Wait()
+	runtime.GC()
+	fmt.Println(x)
+	bio := bufio.NewReader(os.Stdin)
+	bio.ReadLine()
+}

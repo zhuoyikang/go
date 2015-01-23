@@ -1,0 +1,48 @@
+// 处理客户端消息
+func (agent *Agent) handleIn(session Session) {
+	//将数据在这里收取，转换为chan消息发送给逻辑处理routine。
+	agent.wg.Add(1)
+	defer func() { agent.wg.Done() }()
+
+	select {
+	case <- agent.die_chan:
+		fmt.Printf("%s\n", "handle in end")
+	}
+}
+
+// 发送消息给客户端.
+func (agent *Agent) handleOut(session Session) {
+	//将数据转为2进制在此发送
+
+	agent.wg.Add(1)
+	defer func() { agent.wg.Done() }()
+
+	for {
+		select {
+		case <- agent.die_chan:
+			fmt.Printf("%s\n", "handle out end")
+		case <- session.Out :
+			fmt.Printf("%s\n", "handle out session")
+			// 转成2进制从网络发送出去.
+		}
+	}
+}
+
+//处理消息中转.
+func (agent *Agent) handleAll(session Session) {
+	// 处理业务逻辑
+	agent.wg.Add(1)
+	defer func() { agent.wg.Done() }()
+
+	for {
+		select {
+		case <- agent.die_chan:
+			fmt.Printf("%s\n", "handle out end")
+		case <- session.In:
+			fmt.Printf("%s\n", "handle end end")
+		case <- session.In :
+			fmt.Printf("%s\n", "handle out session")
+			// 转成2进制从网络发送出去.
+		}
+	}
+}
