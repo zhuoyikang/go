@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/user/agent"
+	"github.com/user/bomb/agent"
 )
 
 func main() {

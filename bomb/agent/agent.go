@@ -38,11 +38,9 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"github.com/user/bomb/packet"
 )
 
-const(
-	PREALLOC_BUFSIZE = 1024
-)
 
 //
 type Session struct {
@@ -50,7 +48,7 @@ type Session struct {
 	Conn  net.Conn
 	mutex *sync.Mutex
 	agent *Agent
-	Buffer  []byte
+	pkt_handler packet.HandlerI
 }
 
 // 发送数据必须要加锁
@@ -65,39 +63,42 @@ func (session *Session) Send(b []byte) (n int, err error) {
 func (session *Session) ResetKey(newkey int) (oldkey int) {
 	session.mutex.Lock()
 	oldkey = session.key
-	session.mutex.Unlock()
 	session.agent.setSessionKey(oldkey, newkey, session)
+	session.mutex.Unlock()
 	return
 }
 
 type AgentI interface {
-	//处理网络数据
-	HandleIn(session *Session) (i interface{}, err error)
-	//处理由HandleNet函数返回的包数据
-	HandleOut(session *Session, i interface{})
-	Stop()
+	//处理由网络返回的包数据
+	HandlePkt(session *Session, pkt packet.Packet)
+	Start(session *Session)
+	Stop(session *Session)
 }
 
 type Agent struct {
 	net_cls           string
 	net_ipfmt         string
 	agent_i           AgentI
+	pkt_handler       packet.HandlerI
 	listener          net.Listener
 	wg                *sync.WaitGroup
 	die_chan          chan bool //用来控制所有handle-routine退出.
 	signal_ch         chan os.Signal
 	session_id        int //用来唯一标示一个session，自增数字.
-	session_key_mutex *sync.Mutex
+	//session_key_mutex *sync.Mutex
 	session_map_mutex *sync.Mutex
 	session_map       map[int]*Session
 }
 
+
 // 工厂.
-func MakeAgent(cls string, ipfmt string, agent_i AgentI) Agent {
-	agent := Agent{net_cls: cls, net_ipfmt: ipfmt, agent_i: agent_i}
+func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt packet.HandlerI) Agent {
+	agent := Agent{net_cls: cls, net_ipfmt: ipfmt,
+		agent_i: agent_i, pkt_handler:pkt}
 	agent.wg = &sync.WaitGroup{}
 	agent.die_chan = make(chan bool)
-	agent.session_key_mutex = &sync.Mutex{}
+	agent.pkt_handler = pkt
+	//agent.session_key_mutex = &sync.Mutex{}
 	agent.session_map_mutex = &sync.Mutex{}
 	agent.session_map = make(map[int]*Session)
 	return agent
@@ -110,13 +111,13 @@ func (agent *Agent)map_lock(f func())  {
 	agent.session_map_mutex.Unlock()
 }
 
-// 互斥的获取主键，因为Agent可能在一个进程里面有多个Listener.
+// 互斥的获取主键，因为Agent可能在一个进程里面有多个Listener.目前没有。
 // 自动生成的Key是<0的数字形式字符串.
 func (agent *Agent) newSessionKey() (ret int) {
-	agent.session_key_mutex.Lock()
+	//agent.session_key_mutex.Lock()
 	agent.session_id -= 1
 	ret = agent.session_id
-	agent.session_key_mutex.Unlock()
+	//agent.session_key_mutex.Unlock()
 	return
 }
 
@@ -166,9 +167,9 @@ func (agent *Agent) Run() {
 func (agent *Agent) Stop() {
 	agent.wg.Done()
 	agent.listener.Close()
-	agent.agent_i.Stop()
 	close(agent.die_chan)
 	for _, v := range agent.session_map {
+		agent.agent_i.Stop(v)
 		v.Conn.Close()
 	}
 }
@@ -212,9 +213,10 @@ func (agent *Agent) run() {
 			return
 		}
 		session_key := agent.newSessionKey()
+		handler := agent.pkt_handler.New()
 		session := &Session{Conn: conn, mutex: &sync.Mutex{},
-			key: session_key, agent: agent}
-		session.Buffer = make([]byte, PREALLOC_BUFSIZE)
+			key: session_key, agent: agent, pkt_handler:handler}
+		//session.Buffer = make([]byte, PREALLOC_BUFSIZE)
 		go agent.handle(session)
 	}
 }
@@ -227,15 +229,16 @@ func (agent *Agent) handle(session *Session) {
 	defer func() {
 		agent.wg.Done()
 		agent.delSessionKey(session.key)
+		session.Conn.Close()
 		fmt.Printf("session safe quit %d\n", session.key)
 	}()
 
 	for {
-		pkt, err := agent.agent_i.HandleIn(session)
+		pkt, err := session.pkt_handler.Read(session.Conn)
 		if err != nil {
 			fmt.Printf("Error Read %s\n", err.Error())
 			return
 		}
-		agent.agent_i.HandleOut(session, pkt)
+		agent.agent_i.HandlePkt(session, pkt)
 	}
 }
