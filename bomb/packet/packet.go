@@ -13,7 +13,17 @@ import (
 type Packet struct {
 	Data []byte
 	Pos  int
-	Len int
+}
+
+//
+func (pkt *Packet) Reset() {
+	pkt.Pos = 0
+}
+
+//
+func (pkt *Packet) Clear() {
+	pkt.Data = make([]byte, 0, 64)
+	pkt.Pos = 0
 }
 
 // 包处理器接口
@@ -28,9 +38,10 @@ type HandlerI interface {
 }
 
 // 逻辑包:所有逻辑包都要实现对裸包的转换.
+// 指针作为参数是方便循环调用.
 type PacketI interface {
 	//从Packet中转为换PacketI
-	UnPack(Packet) (error)
+	UnPack(*Packet) error
 	//将PacektI转为为Packet.
-	Pack() (Packet, error)
+	Pack(*Packet) error
 }

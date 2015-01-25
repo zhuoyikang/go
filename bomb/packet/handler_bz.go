@@ -40,7 +40,7 @@ func (handle *HandlerBz) Read(reader io.Reader) (Packet, error) {
 			return pkt, errors.New("pkt length error")
 		} else {
 			pkt.Data = buffer
-			pkt.Len = n
+			pkt.Pos=0
 			return pkt, nil
 		}
 	} else {

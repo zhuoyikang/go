@@ -60,7 +60,7 @@ import (
 )
 
 type PacketBz struct {
-	Packet
+	*Packet
 }
 
 //下面是Bz包得各种处理.
@@ -232,19 +232,19 @@ func (p *PacketBz) WriteBool(v bool) {
 	} else {
 		p.Data = append(p.Data, byte(0))
 	}
-	p.Len += 1
+	p.Pos += 1
 }
 
 func (p *PacketBz) WriteByte(v byte) (err error) {
 	p.Data = append(p.Data, v)
-	p.Len += 1
+	p.Pos += 1
 	return
 }
 
 func (p *PacketBz) WriteBytes(v []byte) (err error) {
 	p.WriteU16(uint16(len(v)))
 	p.Data = append(p.Data, v...)
-	p.Len += len(v)
+	p.Pos += len(v)
 	return
 }
 
@@ -252,13 +252,13 @@ func (p *PacketBz) WriteString(v string) (err error) {
 	bytes := []byte(v)
 	p.WriteU16(uint16(len(bytes)))
 	p.Data = append(p.Data, bytes...)
-	p.Len += len(bytes)
+	p.Pos += len(bytes)
 	return
 }
 
 func (p *PacketBz) WriteU16(v uint16) (err error) {
 	p.Data = append(p.Data, byte(v>>8), byte(v))
-	p.Len += 2
+	p.Pos += 2
 	return
 }
 
@@ -269,14 +269,14 @@ func (p *PacketBz) WriteS16(v int16) (err error) {
 
 func (p *PacketBz) WriteU24(v uint32) (err error) {
 	p.Data = append(p.Data, byte(v>>16), byte(v>>8), byte(v))
-	p.Len += 3
+	p.Pos += 3
 	return
 }
 
 func (p *PacketBz) WriteU32(v uint32) (err error) {
 	p.Data = append(p.Data, byte(v>>24), byte(v>>16),
 		byte(v>>8), byte(v))
-	p.Len += 4
+	p.Pos += 4
 	return
 }
 
@@ -290,7 +290,7 @@ func (p *PacketBz) WriteU64(v uint64) (err error) {
 		byte(v>>40), byte(v>>32), byte(v>>24),
 		byte(v>>16), byte(v>>8), byte(v))
 
-	p.Len += 8
+	p.Pos += 8
 	return
 }
 

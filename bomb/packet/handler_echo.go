@@ -23,7 +23,6 @@ func (handle *HandlerEcho) Read(reader io.Reader) (Packet, error) {
 	_, err := reader.Read(buffer)
 	pkt.Data=buffer
 	pkt.Pos=0
-	pkt.Len=len(buffer)
 	return pkt, err
 }
 
