@@ -8,37 +8,38 @@ import (
 type PktUserInfo struct {
 	UserId   int32
 	UserName string
-	BaseArr    []int32
+	BaseArr  []int32
 }
 
 const (
 	BZ_USER_REGISTER_REQ = 0
 )
 
-
 func MakeBzDemoHandler() BzHandlerMAP {
-	ProtocalHandler := BzHandlerMAP {
+	ProtocalHandler := BzHandlerMAP{
 		BZ_USER_REGISTER_REQ: UserRegisterReq,
 	}
 	return ProtocalHandler
 }
 
-func BzReadPktUserInfo(pkt *BzPacket) (ret *PktUserInfo, err error) {
+func BzReadPktUserInfo(datai []byte) (data []byte, ret *PktUserInfo, err error) {
+	data = datai
 	ret = &PktUserInfo{}
-	ret.UserId, err = BzReads32(pkt)
+	data, ret.UserId, err = BzReads32(data)
 	if err != nil {
 		return
 	}
 
-	ret.UserName, err = BzReadstring(pkt)
+	data, ret.UserName, err = BzReadstring(data)
 	if err != nil {
 		return
 	}
 
 	var int_v int32
-	size, err := BzReadu16(pkt)
+	data, size, err := BzReadu16(data)
+	fmt.Printf("xxxx %d\n", data)
 	for i := 0; i < int(size); i++ {
-		int_v, err = BzReads32(pkt)
+		data, int_v, err = BzReads32(data)
 		if err != nil {
 			return
 		}
@@ -47,19 +48,20 @@ func BzReadPktUserInfo(pkt *BzPacket) (ret *PktUserInfo, err error) {
 	return
 }
 
-func BzWritePktUserInfo(pkt *BzPacket, ret *PktUserInfo) (err error) {
-	err = BzWrites32(pkt, ret.UserId)
-	err = BzWritestring(pkt, ret.UserName)
+func BzWritePktUserInfo(datai []byte, ret *PktUserInfo) (data []byte, err error) {
+	data = datai
+	data, err = BzWrites32(data, ret.UserId)
+	data, err = BzWritestring(data, ret.UserName)
 
-	BzWriteu16(pkt, uint16(len(ret.BaseArr)))
+	data, err = BzWriteu16(data, uint16(len(ret.BaseArr)))
 	for _, v := range ret.BaseArr {
-		BzWrites32(pkt, v)
+		data, err = BzWrites32(data, v)
 	}
 	return
 }
 
 // 玩家登陆包
 func UserRegisterReq(sess *Session, pkt *BzPacket) {
-	userInfo, _ := BzReadPktUserInfo(pkt)
+	_, userInfo, _ := BzReadPktUserInfo(pkt.Data)
 	fmt.Printf("%v\n", userInfo)
 }

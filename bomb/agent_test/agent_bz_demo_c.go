@@ -21,7 +21,6 @@ func test2() {
 
 func main() {
 	test2()
-
 	conn, err := net.Dial("tcp", "0.0.0.0:8080")
 	if err != nil {
 		fmt.Println("连接服务端失败:", err.Error())
@@ -36,11 +35,11 @@ func main() {
 		BaseArr:  []int32{1, 2, 4, 5},
 	}
 
-	pkt := &agent.BzPacket{}
-	agent.BzWritePktUserInfo(pkt, userInfo)
-	data := agent.MakePacketData(0, pkt)
+	fmt.Printf("%v\n", userInfo)
+	data, err := agent.BzWritePktUserInfo([]byte{}, userInfo)
+	data = agent.MakePacketData(0, data)
 
 	conn.Write(data)
 	time.Sleep(1 * time.Second)
-	fmt.Printf("%s\n", "client quit")
+	fmt.Printf("%s %v %d\n", "client quit", data, len(data))
 }
