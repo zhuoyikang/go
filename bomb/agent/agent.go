@@ -34,13 +34,12 @@ import (
 	"fmt"
 	"net"
 	//"strconv"
+	"github.com/user/bomb/packet"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"github.com/user/bomb/packet"
 )
-
 
 //
 type Session struct {
@@ -52,9 +51,9 @@ type Session struct {
 }
 
 // 发送数据必须要加锁
-func (session *Session) Send(b []byte) (n int, err error) {
+func (session *Session) Send(pkt packet.Packet) (err error) {
 	session.mutex.Lock()
-	n, err = session.Conn.Write(b)
+	err = session.pkt_handler.Write(session.Conn, pkt)
 	session.mutex.Unlock()
 	return
 }
@@ -76,25 +75,24 @@ type AgentI interface {
 }
 
 type Agent struct {
-	net_cls           string
-	net_ipfmt         string
-	agent_i           AgentI
-	pkt_handler       packet.HandlerI
-	listener          net.Listener
-	wg                *sync.WaitGroup
-	die_chan          chan bool //用来控制所有handle-routine退出.
-	signal_ch         chan os.Signal
-	session_id        int //用来唯一标示一个session，自增数字.
+	net_cls     string
+	net_ipfmt   string
+	agent_i     AgentI
+	pkt_handler packet.HandlerI
+	listener    net.Listener
+	wg          *sync.WaitGroup
+	die_chan    chan bool //用来控制所有handle-routine退出.
+	signal_ch   chan os.Signal
+	session_id  int //用来唯一标示一个session，自增数字.
 	//session_key_mutex *sync.Mutex
 	session_map_mutex *sync.Mutex
 	session_map       map[int]*Session
 }
 
-
 // 工厂.
 func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt packet.HandlerI) Agent {
 	agent := Agent{net_cls: cls, net_ipfmt: ipfmt,
-		agent_i: agent_i, pkt_handler:pkt}
+		agent_i: agent_i, pkt_handler: pkt}
 	agent.wg = &sync.WaitGroup{}
 	agent.die_chan = make(chan bool)
 	agent.pkt_handler = pkt
@@ -105,7 +103,7 @@ func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt packet.HandlerI) Ag
 }
 
 // agent.map_lock(func(){ })
-func (agent *Agent)map_lock(f func())  {
+func (agent *Agent) map_lock(f func()) {
 	agent.session_map_mutex.Lock()
 	f()
 	agent.session_map_mutex.Unlock()
@@ -123,7 +121,7 @@ func (agent *Agent) newSessionKey() (ret int) {
 
 // 重新设置key.用于业务逻辑自身处理key.
 func (agent *Agent) setSessionKey(oldkey, newkey int, session *Session) {
-	agent.map_lock(func(){
+	agent.map_lock(func() {
 		delete(agent.session_map, oldkey)
 		agent.session_map[newkey] = session
 	})
@@ -131,14 +129,14 @@ func (agent *Agent) setSessionKey(oldkey, newkey int, session *Session) {
 
 // 删除key和session，用于session退出.
 func (agent *Agent) delSessionKey(oldkey int) {
-	agent.map_lock(func(){
+	agent.map_lock(func() {
 		delete(agent.session_map, oldkey)
 	})
 }
 
 // 通过Key查找Session.
-func (agent *Agent) GetSessionByKey(key int) (session *Session){
-	agent.map_lock(func(){
+func (agent *Agent) GetSessionByKey(key int) (session *Session) {
+	agent.map_lock(func() {
 		session = agent.session_map[key]
 	})
 	return
@@ -215,7 +213,8 @@ func (agent *Agent) run() {
 		session_key := agent.newSessionKey()
 		handler := agent.pkt_handler.New()
 		session := &Session{Conn: conn, mutex: &sync.Mutex{},
-			key: session_key, agent: agent, pkt_handler:handler}
+			pkt_handler:handler,
+			key: session_key, agent: agent}
 		//session.Buffer = make([]byte, PREALLOC_BUFSIZE)
 		go agent.handle(session)
 	}

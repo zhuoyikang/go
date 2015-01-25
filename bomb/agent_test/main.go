@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	agent.AgentDemo1Main()
+	agent.AgentEchoMain()
 }

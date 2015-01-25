@@ -20,30 +20,29 @@ import (
 	. "github.com/user/bomb/packet"
 )
 
-type AgentDemo1 struct {
+type AgentEcho struct {
 }
 
 
 // 启动一个session
-func (gs* AgentDemo1) Start(session *Session) {
+func (gs* AgentEcho) Start(session *Session) {
 	fmt.Printf("%s\n", "begin stop")
 }
 
 // 当然这里接受到1各数字2，返回给客户端.
-func (gs* AgentDemo1) HandlePkt(session *Session, pkt Packet) {
-	fmt.Printf("%s\n", "fwefwefwef")
-	session.Send(pkt.Data)
+func (gs* AgentEcho) HandlePkt(session *Session, pkt Packet) {
+	session.Send(pkt)
 	return
 }
 
 // 停止一个session.
-func (gs* AgentDemo1) Stop(session *Session) {
+func (gs* AgentEcho) Stop(session *Session) {
 	fmt.Printf("%s\n", "begin stop")
 }
 
 
-func AgentDemo1Main() {
-	agt := MakeAgent("tcp", "0.0.0.0:8080", &AgentDemo1{}, &HandlerEcho{})
+func AgentEchoMain() {
+	agt := MakeAgent("tcp", "0.0.0.0:8080", &AgentEcho{}, &HandlerEcho{})
 	go func() {
 		// 10s后安全停止所有agent进程.
 		time.Sleep(time.Second * 10)

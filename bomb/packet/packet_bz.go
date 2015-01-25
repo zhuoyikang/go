@@ -1,4 +1,9 @@
 /*
+所有的packet类型都需要实现对Packet的转换关系。
+
+PacketBz  ->  packet(2进制包)
+PacketBz  <-  packet(2进制包)
+
 
 一种网络数据序列化的方式.
 
@@ -45,10 +50,9 @@ account_i=
 pt pt_account
 cls integer
 ===
-
 */
 
-package agent
+package packet
 
 import (
 	"errors"
@@ -56,9 +60,10 @@ import (
 )
 
 type PacketBz struct {
+	Packet
 }
 
-
+//下面是Bz包得各种处理.
 func (p *PacketBz) ReadBool() (ret bool, err error) {
 	b, _err := p.ReadByte()
 
@@ -69,59 +74,59 @@ func (p *PacketBz) ReadBool() (ret bool, err error) {
 }
 
 func (p *PacketBz) ReadByte() (ret byte, err error) {
-	if p.pos >= len(p.data) {
+	if p.Pos >= len(p.Data) {
 		err = errors.New("read byte failed")
 		return
 	}
 
-	ret = p.data[p.pos]
-	p.pos++
+	ret = p.Data[p.Pos]
+	p.Pos++
 	return
 }
 
 func (p *PacketBz) ReadBytes() (ret []byte, err error) {
-	if p.pos+2 > len(p.data) {
+	if p.Pos+2 > len(p.Data) {
 		err = errors.New("read bytes header failed")
 		return
 	}
 	size, _ := p.ReadU16()
-	if p.pos+int(size) > len(p.data) {
-		err = errors.New("read bytes data failed")
+	if p.Pos+int(size) > len(p.Data) {
+		err = errors.New("read bytes Data failed")
 		return
 	}
 
-	ret = p.data[p.pos : p.pos+int(size)]
-	p.pos += int(size)
+	ret = p.Data[p.Pos : p.Pos+int(size)]
+	p.Pos += int(size)
 	return
 }
 
 func (p *PacketBz) ReadString() (ret string, err error) {
-	if p.pos+2 > len(p.data) {
+	if p.Pos+2 > len(p.Data) {
 		err = errors.New("read string header failed")
 		return
 	}
 
 	size, _ := p.ReadU16()
-	if p.pos+int(size) > len(p.data) {
-		err = errors.New("read string data failed")
+	if p.Pos+int(size) > len(p.Data) {
+		err = errors.New("read string Data failed")
 		return
 	}
 
-	bytes := p.data[p.pos : p.pos+int(size)]
-	p.pos += int(size)
+	bytes := p.Data[p.Pos : p.Pos+int(size)]
+	p.Pos += int(size)
 	ret = string(bytes)
 	return
 }
 
 func (p *PacketBz) ReadU16() (ret uint16, err error) {
-	if p.pos+2 > len(p.data) {
+	if p.Pos+2 > len(p.Data) {
 		err = errors.New("read uint16 failed")
 		return
 	}
 
-	buf := p.data[p.pos : p.pos+2]
+	buf := p.Data[p.Pos : p.Pos+2]
 	ret = uint16(buf[0])<<8 | uint16(buf[1])
-	p.pos += 2
+	p.Pos += 2
 	return
 }
 
@@ -133,14 +138,14 @@ func (p *PacketBz) ReadS16() (ret int16, err error) {
 }
 
 func (p *PacketBz) ReadU24() (ret uint32, err error) {
-	if p.pos+3 > len(p.data) {
+	if p.Pos+3 > len(p.Data) {
 		err = errors.New("read uint24 failed")
 		return
 	}
 
-	buf := p.data[p.pos : p.pos+3]
+	buf := p.Data[p.Pos : p.Pos+3]
 	ret = uint32(buf[0])<<16 | uint32(buf[1])<<8 | uint32(buf[2])
-	p.pos += 3
+	p.Pos += 3
 	return
 }
 
@@ -152,14 +157,15 @@ func (p *PacketBz) ReadS24() (ret int32, err error) {
 }
 
 func (p *PacketBz) ReadU32() (ret uint32, err error) {
-	if p.pos+4 > len(p.data) {
+	if p.Pos+4 > len(p.Data) {
 		err = errors.New("read uint32 failed")
 		return
 	}
 
-	buf := p.data[p.pos : p.pos+4]
-	ret = uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 | uint32(buf[3])
-	p.pos += 4
+	buf := p.Data[p.Pos : p.Pos+4]
+	ret = uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 |
+		uint32(buf[3])
+	p.Pos += 4
 	return
 }
 
@@ -171,17 +177,17 @@ func (p *PacketBz) ReadS32() (ret int32, err error) {
 }
 
 func (p *PacketBz) ReadU64() (ret uint64, err error) {
-	if p.pos+8 > len(p.data) {
+	if p.Pos+8 > len(p.Data) {
 		err = errors.New("read uint64 failed")
 		return
 	}
 
 	ret = 0
-	buf := p.data[p.pos : p.pos+8]
+	buf := p.Data[p.Pos : p.Pos+8]
 	for i, v := range buf {
 		ret |= uint64(v) << uint((7-i)*8)
 	}
-	p.pos += 8
+	p.Pos += 8
 	return
 }
 
@@ -220,41 +226,39 @@ func (p *PacketBz) ReadFloat64() (ret float64, err error) {
 	return ret, nil
 }
 
-//================================================ Writers
-
 func (p *PacketBz) WriteBool(v bool) {
 	if v {
-		p.data = append(p.data, byte(1))
+		p.Data = append(p.Data, byte(1))
 	} else {
-		p.data = append(p.data, byte(0))
+		p.Data = append(p.Data, byte(0))
 	}
-	p.pos += 1
+	p.Len += 1
 }
 
 func (p *PacketBz) WriteByte(v byte) (err error) {
-	p.data = append(p.data, v)
-	p.pos += 1
+	p.Data = append(p.Data, v)
+	p.Len += 1
 	return
 }
 
 func (p *PacketBz) WriteBytes(v []byte) (err error) {
 	p.WriteU16(uint16(len(v)))
-	p.data = append(p.data, v...)
-	p.pos += len(v)
+	p.Data = append(p.Data, v...)
+	p.Len += len(v)
 	return
 }
 
 func (p *PacketBz) WriteString(v string) (err error) {
 	bytes := []byte(v)
 	p.WriteU16(uint16(len(bytes)))
-	p.data = append(p.data, bytes...)
-	p.pos += len(bytes)
+	p.Data = append(p.Data, bytes...)
+	p.Len += len(bytes)
 	return
 }
 
 func (p *PacketBz) WriteU16(v uint16) (err error) {
-	p.data = append(p.data, byte(v>>8), byte(v))
-	p.pos += 2
+	p.Data = append(p.Data, byte(v>>8), byte(v))
+	p.Len += 2
 	return
 }
 
@@ -264,14 +268,15 @@ func (p *PacketBz) WriteS16(v int16) (err error) {
 }
 
 func (p *PacketBz) WriteU24(v uint32) (err error) {
-	p.data = append(p.data, byte(v>>16), byte(v>>8), byte(v))
-	p.pos += 3
+	p.Data = append(p.Data, byte(v>>16), byte(v>>8), byte(v))
+	p.Len += 3
 	return
 }
 
 func (p *PacketBz) WriteU32(v uint32) (err error) {
-	p.data = append(p.data, byte(v>>24), byte(v>>16), byte(v>>8), byte(v))
-	p.pos += 4
+	p.Data = append(p.Data, byte(v>>24), byte(v>>16),
+		byte(v>>8), byte(v))
+	p.Len += 4
 	return
 }
 
@@ -281,11 +286,11 @@ func (p *PacketBz) WriteS32(v int32) (err error) {
 }
 
 func (p *PacketBz) WriteU64(v uint64) (err error) {
-	p.data = append(p.data, byte(v>>56), byte(v>>48),
+	p.Data = append(p.Data, byte(v>>56), byte(v>>48),
 		byte(v>>40), byte(v>>32), byte(v>>24),
 		byte(v>>16), byte(v>>8), byte(v))
 
-	p.pos += 8
+	p.Len += 8
 	return
 }
 
