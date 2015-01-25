@@ -56,257 +56,353 @@ package packet
 
 import (
 	"errors"
-	"math"
+	//"math"
 )
 
-type PacketBz struct {
-	*Packet
-}
+//------------------------------------------------------------------------------
+// 基础类型的Pack和UnPack
+//------------------------------------------------------------------------------
 
-//下面是Bz包得各种处理.
-func (p *PacketBz) ReadBool() (ret bool, err error) {
-	b, _err := p.ReadByte()
+type BzUint16 uint16
 
-	if b != byte(1) {
-		return false, _err
-	}
-	return true, _err
-}
-
-func (p *PacketBz) ReadByte() (ret byte, err error) {
-	if p.Pos >= len(p.Data) {
-		err = errors.New("read byte failed")
+func (bz_int *BzUint16) UnPack(pkt *Packet) (err error) {
+	if pkt.Pos+4 > len(pkt.Data) {
+		err = errors.New("read int32 failed")
 		return
 	}
 
-	ret = p.Data[p.Pos]
-	p.Pos++
+	buf := pkt.Data[pkt.Pos : pkt.Pos+2]
+	ret :=  uint16(buf[0])<<8 | uint16(buf[1])
+	*bz_int = BzUint16(ret)
+	pkt.Pos += 2
 	return
 }
 
-func (p *PacketBz) ReadBytes() (ret []byte, err error) {
-	if p.Pos+2 > len(p.Data) {
-		err = errors.New("read bytes header failed")
-		return
-	}
-	size, _ := p.ReadU16()
-	if p.Pos+int(size) > len(p.Data) {
-		err = errors.New("read bytes Data failed")
-		return
-	}
-
-	ret = p.Data[p.Pos : p.Pos+int(size)]
-	p.Pos += int(size)
+func (bz_int *BzUint16) Pack(pkt *Packet) (err error) {
+	v := (uint16)(*bz_int)
+	pkt.Data = append(pkt.Data, byte(v>>8), byte(v))
+	pkt.Pos += 2
 	return
 }
 
-func (p *PacketBz) ReadString() (ret string, err error) {
-	if p.Pos+2 > len(p.Data) {
+
+type BzSint32 int32
+
+func (bz_int *BzSint32) UnPack(pkt *Packet) (err error) {
+	if pkt.Pos+4 > len(pkt.Data) {
+		err = errors.New("read int32 failed")
+		return
+	}
+
+	buf := pkt.Data[pkt.Pos : pkt.Pos+4]
+	ret := int32(buf[0])<<24 | int32(buf[1])<<16 | int32(buf[2])<<8 |
+		int32(buf[3])
+	*bz_int = BzSint32(ret)
+	pkt.Pos += 4
+	return
+}
+
+func (bz_int *BzSint32) Pack(pkt *Packet) (err error) {
+	v := (int32)(*bz_int)
+	pkt.Data = append(pkt.Data, byte(v>>24), byte(v>>16),
+		byte(v>>8), byte(v))
+	pkt.Pos += 4
+	return
+}
+
+type BzString string
+
+func (bz_s *BzString) UnPack(pkt *Packet) (err error) {
+	if pkt.Pos+2 > len(pkt.Data) {
 		err = errors.New("read string header failed")
 		return
 	}
 
-	size, _ := p.ReadU16()
-	if p.Pos+int(size) > len(p.Data) {
+	var size BzUint16
+	err = size.UnPack(pkt)
+	if(err != nil ){
+		return err
+	}
+
+	if pkt.Pos+int(size) > len(pkt.Data) {
 		err = errors.New("read string Data failed")
 		return
 	}
 
-	bytes := p.Data[p.Pos : p.Pos+int(size)]
-	p.Pos += int(size)
-	ret = string(bytes)
+	bytes := pkt.Data[pkt.Pos : pkt.Pos+int(size)]
+	pkt.Pos += int(size)
+	*bz_s = BzString(bytes)
 	return
 }
 
-func (p *PacketBz) ReadU16() (ret uint16, err error) {
-	if p.Pos+2 > len(p.Data) {
-		err = errors.New("read uint16 failed")
+func (bz_s *BzString) Pack(pkt *Packet) (err error) {
+	bytes := []byte(string(*bz_s))
+	size := (BzUint16(len(bytes)))
+	err = size.Pack(pkt)
+	if(err!=nil) {
 		return
 	}
-
-	buf := p.Data[p.Pos : p.Pos+2]
-	ret = uint16(buf[0])<<8 | uint16(buf[1])
-	p.Pos += 2
+	pkt.Data = append(pkt.Data, bytes...)
+	pkt.Pos += len(bytes)
 	return
 }
 
-func (p *PacketBz) ReadS16() (ret int16, err error) {
-	_ret, _err := p.ReadU16()
-	ret = int16(_ret)
-	err = _err
-	return
-}
 
-func (p *PacketBz) ReadU24() (ret uint32, err error) {
-	if p.Pos+3 > len(p.Data) {
-		err = errors.New("read uint24 failed")
-		return
-	}
 
-	buf := p.Data[p.Pos : p.Pos+3]
-	ret = uint32(buf[0])<<16 | uint32(buf[1])<<8 | uint32(buf[2])
-	p.Pos += 3
-	return
-}
+//------------------------------------------------------------------------------
+// base1
+//------------------------------------------------------------------------------
 
-func (p *PacketBz) ReadS24() (ret int32, err error) {
-	_ret, _err := p.ReadU24()
-	ret = int32(_ret)
-	err = _err
-	return
-}
 
-func (p *PacketBz) ReadU32() (ret uint32, err error) {
-	if p.Pos+4 > len(p.Data) {
-		err = errors.New("read uint32 failed")
-		return
-	}
+// type PacketBz struct {
+// 	*Packet
+// }
 
-	buf := p.Data[p.Pos : p.Pos+4]
-	ret = uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 |
-		uint32(buf[3])
-	p.Pos += 4
-	return
-}
 
-func (p *PacketBz) ReadS32() (ret int32, err error) {
-	_ret, _err := p.ReadU32()
-	ret = int32(_ret)
-	err = _err
-	return
-}
+// //下面是Bz包得各种处理.
+// func (p *PacketBz) ReadBool() (ret bool, err error) {
+// 	b, _err := p.ReadByte()
 
-func (p *PacketBz) ReadU64() (ret uint64, err error) {
-	if p.Pos+8 > len(p.Data) {
-		err = errors.New("read uint64 failed")
-		return
-	}
+// 	if b != byte(1) {
+// 		return false, _err
+// 	}
+// 	return true, _err
+// }
 
-	ret = 0
-	buf := p.Data[p.Pos : p.Pos+8]
-	for i, v := range buf {
-		ret |= uint64(v) << uint((7-i)*8)
-	}
-	p.Pos += 8
-	return
-}
+// func (p *PacketBz) ReadByte() (ret byte, err error) {
+// 	if p.Pos >= len(p.Data) {
+// 		err = errors.New("read byte failed")
+// 		return
+// 	}
 
-func (p *PacketBz) ReadS64() (ret int64, err error) {
-	_ret, _err := p.ReadU64()
-	ret = int64(_ret)
-	err = _err
-	return
-}
+// 	ret = p.Data[p.Pos]
+// 	p.Pos++
+// 	return
+// }
 
-func (p *PacketBz) ReadFloat32() (ret float32, err error) {
-	bits, _err := p.ReadU32()
-	if _err != nil {
-		return float32(0), _err
-	}
+// func (p *PacketBz) ReadBytes() (ret []byte, err error) {
+// 	if p.Pos+2 > len(p.Data) {
+// 		err = errors.New("read bytes header failed")
+// 		return
+// 	}
+// 	size, _ := p.ReadU16()
+// 	if p.Pos+int(size) > len(p.Data) {
+// 		err = errors.New("read bytes Data failed")
+// 		return
+// 	}
 
-	ret = math.Float32frombits(bits)
-	if math.IsNaN(float64(ret)) || math.IsInf(float64(ret), 0) {
-		return 0, nil
-	}
+// 	ret = p.Data[p.Pos : p.Pos+int(size)]
+// 	p.Pos += int(size)
+// 	return
+// }
 
-	return ret, nil
-}
+// func (p *PacketBz) ReadString() (ret string, err error) {
+// 	if p.Pos+2 > len(p.Data) {
+// 		err = errors.New("read string header failed")
+// 		return
+// 	}
 
-func (p *PacketBz) ReadFloat64() (ret float64, err error) {
-	bits, _err := p.ReadU64()
-	if _err != nil {
-		return float64(0), _err
-	}
+// 	size, _ := p.ReadU16()
+// 	if p.Pos+int(size) > len(p.Data) {
+// 		err = errors.New("read string Data failed")
+// 		return
+// 	}
 
-	ret = math.Float64frombits(bits)
-	if math.IsNaN(ret) || math.IsInf(ret, 0) {
-		return 0, nil
-	}
+// 	bytes := p.Data[p.Pos : p.Pos+int(size)]
+// 	p.Pos += int(size)
+// 	ret = string(bytes)
+// 	return
+// }
 
-	return ret, nil
-}
+// func (p *PacketBz) ReadU16() (ret uint16, err error) {
+// 	if p.Pos+2 > len(p.Data) {
+// 		err = errors.New("read uint16 failed")
+// 		return
+// 	}
 
-func (p *PacketBz) WriteBool(v bool) {
-	if v {
-		p.Data = append(p.Data, byte(1))
-	} else {
-		p.Data = append(p.Data, byte(0))
-	}
-	p.Pos += 1
-}
+// 	buf := p.Data[p.Pos : p.Pos+2]
+// 	ret = uint16(buf[0])<<8 | uint16(buf[1])
+// 	p.Pos += 2
+// 	return
+// }
 
-func (p *PacketBz) WriteByte(v byte) (err error) {
-	p.Data = append(p.Data, v)
-	p.Pos += 1
-	return
-}
+// func (p *PacketBz) ReadS16() (ret int16, err error) {
+// 	_ret, _err := p.ReadU16()
+// 	ret = int16(_ret)
+// 	err = _err
+// 	return
+// }
 
-func (p *PacketBz) WriteBytes(v []byte) (err error) {
-	p.WriteU16(uint16(len(v)))
-	p.Data = append(p.Data, v...)
-	p.Pos += len(v)
-	return
-}
+// func (p *PacketBz) ReadU24() (ret uint32, err error) {
+// 	if p.Pos+3 > len(p.Data) {
+// 		err = errors.New("read uint24 failed")
+// 		return
+// 	}
 
-func (p *PacketBz) WriteString(v string) (err error) {
-	bytes := []byte(v)
-	p.WriteU16(uint16(len(bytes)))
-	p.Data = append(p.Data, bytes...)
-	p.Pos += len(bytes)
-	return
-}
+// 	buf := p.Data[p.Pos : p.Pos+3]
+// 	ret = uint32(buf[0])<<16 | uint32(buf[1])<<8 | uint32(buf[2])
+// 	p.Pos += 3
+// 	return
+// }
 
-func (p *PacketBz) WriteU16(v uint16) (err error) {
-	p.Data = append(p.Data, byte(v>>8), byte(v))
-	p.Pos += 2
-	return
-}
+// func (p *PacketBz) ReadS24() (ret int32, err error) {
+// 	_ret, _err := p.ReadU24()
+// 	ret = int32(_ret)
+// 	err = _err
+// 	return
+// }
 
-func (p *PacketBz) WriteS16(v int16) (err error) {
-	p.WriteU16(uint16(v))
-	return
-}
+// func (p *PacketBz) ReadU32() (ret uint32, err error) {
+// 	if p.Pos+4 > len(p.Data) {
+// 		err = errors.New("read uint32 failed")
+// 		return
+// 	}
 
-func (p *PacketBz) WriteU24(v uint32) (err error) {
-	p.Data = append(p.Data, byte(v>>16), byte(v>>8), byte(v))
-	p.Pos += 3
-	return
-}
+// 	buf := p.Data[p.Pos : p.Pos+4]
+// 	ret = uint32(buf[0])<<24 | uint32(buf[1])<<16 | uint32(buf[2])<<8 |
+// 		uint32(buf[3])
+// 	p.Pos += 4
+// 	return
+// }
 
-func (p *PacketBz) WriteU32(v uint32) (err error) {
-	p.Data = append(p.Data, byte(v>>24), byte(v>>16),
-		byte(v>>8), byte(v))
-	p.Pos += 4
-	return
-}
+// func (p *PacketBz) ReadS32() (ret int32, err error) {
+// 	_ret, _err := p.ReadU32()
+// 	ret = int32(_ret)
+// 	err = _err
+// 	return
+// }
 
-func (p *PacketBz) WriteS32(v int32) (err error) {
-	p.WriteU32(uint32(v))
-	return
-}
+// func (p *PacketBz) ReadU64() (ret uint64, err error) {
+// 	if p.Pos+8 > len(p.Data) {
+// 		err = errors.New("read uint64 failed")
+// 		return
+// 	}
 
-func (p *PacketBz) WriteU64(v uint64) (err error) {
-	p.Data = append(p.Data, byte(v>>56), byte(v>>48),
-		byte(v>>40), byte(v>>32), byte(v>>24),
-		byte(v>>16), byte(v>>8), byte(v))
+// 	ret = 0
+// 	buf := p.Data[p.Pos : p.Pos+8]
+// 	for i, v := range buf {
+// 		ret |= uint64(v) << uint((7-i)*8)
+// 	}
+// 	p.Pos += 8
+// 	return
+// }
 
-	p.Pos += 8
-	return
-}
+// func (p *PacketBz) ReadS64() (ret int64, err error) {
+// 	_ret, _err := p.ReadU64()
+// 	ret = int64(_ret)
+// 	err = _err
+// 	return
+// }
 
-func (p *PacketBz) WriteS64(v int64) (err error) {
-	p.WriteU64(uint64(v))
-	return
-}
+// func (p *PacketBz) ReadFloat32() (ret float32, err error) {
+// 	bits, _err := p.ReadU32()
+// 	if _err != nil {
+// 		return float32(0), _err
+// 	}
 
-func (p *PacketBz) WriteFloat32(f float32) (err error) {
-	v := math.Float32bits(f)
-	p.WriteU32(v)
-	return
-}
+// 	ret = math.Float32frombits(bits)
+// 	if math.IsNaN(float64(ret)) || math.IsInf(float64(ret), 0) {
+// 		return 0, nil
+// 	}
 
-func (p *PacketBz) WriteFloat64(f float64) (err error) {
-	v := math.Float64bits(f)
-	p.WriteU64(v)
-	return
-}
+// 	return ret, nil
+// }
+
+// func (p *PacketBz) ReadFloat64() (ret float64, err error) {
+// 	bits, _err := p.ReadU64()
+// 	if _err != nil {
+// 		return float64(0), _err
+// 	}
+
+// 	ret = math.Float64frombits(bits)
+// 	if math.IsNaN(ret) || math.IsInf(ret, 0) {
+// 		return 0, nil
+// 	}
+
+// 	return ret, nil
+// }
+
+// func (p *PacketBz) WriteBool(v bool) {
+// 	if v {
+// 		p.Data = append(p.Data, byte(1))
+// 	} else {
+// 		p.Data = append(p.Data, byte(0))
+// 	}
+// 	p.Pos += 1
+// }
+
+// func (p *PacketBz) WriteByte(v byte) (err error) {
+// 	p.Data = append(p.Data, v)
+// 	p.Pos += 1
+// 	return
+// }
+
+// func (p *PacketBz) WriteBytes(v []byte) (err error) {
+// 	p.WriteU16(uint16(len(v)))
+// 	p.Data = append(p.Data, v...)
+// 	p.Pos += len(v)
+// 	return
+// }
+
+// func (p *PacketBz) WriteString(v string) (err error) {
+// 	bytes := []byte(v)
+// 	p.WriteU16(uint16(len(bytes)))
+// 	p.Data = append(p.Data, bytes...)
+// 	p.Pos += len(bytes)
+// 	return
+// }
+
+// func (p *PacketBz) WriteU16(v uint16) (err error) {
+// 	p.Data = append(p.Data, byte(v>>8), byte(v))
+// 	p.Pos += 2
+// 	return
+// }
+
+// func (p *PacketBz) WriteS16(v int16) (err error) {
+// 	p.WriteU16(uint16(v))
+// 	return
+// }
+
+// func (p *PacketBz) WriteU24(v uint32) (err error) {
+// 	p.Data = append(p.Data, byte(v>>16), byte(v>>8), byte(v))
+// 	p.Pos += 3
+// 	return
+// }
+
+// func (p *PacketBz) WriteU32(v uint32) (err error) {
+// 	p.Data = append(p.Data, byte(v>>24), byte(v>>16),
+// 		byte(v>>8), byte(v))
+// 	p.Pos += 4
+// 	return
+// }
+
+// func (p *PacketBz) WriteS32(v int32) (err error) {
+// 	p.WriteU32(uint32(v))
+// 	return
+// }
+
+// func (p *PacketBz) WriteU64(v uint64) (err error) {
+// 	p.Data = append(p.Data, byte(v>>56), byte(v>>48),
+// 		byte(v>>40), byte(v>>32), byte(v>>24),
+// 		byte(v>>16), byte(v>>8), byte(v))
+
+// 	p.Pos += 8
+// 	return
+// }
+
+// func (p *PacketBz) WriteS64(v int64) (err error) {
+// 	p.WriteU64(uint64(v))
+// 	return
+// }
+
+// func (p *PacketBz) WriteFloat32(f float32) (err error) {
+// 	v := math.Float32bits(f)
+// 	p.WriteU32(v)
+// 	return
+// }
+
+// func (p *PacketBz) WriteFloat64(f float64) (err error) {
+// 	v := math.Float64bits(f)
+// 	p.WriteU64(v)
+// 	return
+// }
