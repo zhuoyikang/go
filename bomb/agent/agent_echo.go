@@ -1,46 +1,59 @@
 /*
-  一个简单地agent实现
-  对所有客户端回复数字:2
-
-  网络层自定义 =>
-
-  使用者可以按自己的意愿在这里重写网络层HandleIn和HandleOut处理。
-  1.可以选择自定义的序列化方式
-  2.也可以选择其他，可以在这里特化使用不同的协议.
-
+  一个简单地实现:Echo
 */
 
 package agent
 
 import (
 	"fmt"
-	//"io"
+	"io"
 	//"strconv"
 	"time"
-	. "github.com/user/bomb/packet"
 )
 
+//Step 1.实现1个agent:应用程序App
 type AgentEcho struct {
 }
 
-
 // 启动一个session
-func (gs* AgentEcho) Start(session *Session) {
-	fmt.Printf("%s\n", "begin stop")
+func (gs *AgentEcho) Start(session *Session) {
+	fmt.Printf("%s\n", "echo session start")
 }
 
-// 当然这里接受到1各数字2，返回给客户端.
-func (gs* AgentEcho) HandlePkt(session *Session, pkt Packet) {
-	session.Send(pkt)
+// 将接受到得包，又发送给客户端.
+func (gs *AgentEcho) HandlePkt(session *Session, pkti interface{}) {
+	fmt.Printf("%s\n", "echo session handle")
+	session.Send(pkti)
 	return
 }
 
 // 停止一个session.
-func (gs* AgentEcho) Stop(session *Session) {
-	fmt.Printf("%s\n", "begin stop")
+func (gs *AgentEcho) Stop(session *Session) {
+	fmt.Printf("%s\n", "echo session stop")
 }
 
+//Step 2.实现1个handler:网络包处理
+type HandlerEcho struct {
+}
 
+//从Reader中获取一个完整的包
+func (handle *HandlerEcho) Read(reader io.Reader) (interface{}, error) {
+	buffer := make([]byte, 1024)
+	_, err := reader.Read(buffer)
+	return buffer, err
+}
+
+func (handle *HandlerEcho) Write(writer io.Writer, pkti interface{}) error {
+	buffer := pkti.([]byte)
+	_, err := writer.Write(buffer)
+	return err
+}
+
+func (handle *HandlerEcho) New() HandlerI {
+	return &HandlerEcho{}
+}
+
+//Step3:测试一个服务器.
 func AgentEchoMain() {
 	agt := MakeAgent("tcp", "0.0.0.0:8080", &AgentEcho{}, &HandlerEcho{})
 	go func() {
@@ -49,7 +62,7 @@ func AgentEchoMain() {
 		fmt.Printf("%s\n", "test stop")
 		agt.Stop()
 	}()
-	agt.Signal() //让Agt处理信号。
+	agt.Signal() //让Agt处理信号。Ctrl-C
 	agt.Run()
 	fmt.Printf("%s\n", "end")
 }

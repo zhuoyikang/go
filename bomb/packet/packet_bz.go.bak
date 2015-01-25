@@ -1,0 +1,361 @@
+// type BzUint16 uint16
+
+// func (bz_int *BzUint16) UnPack(pkt *Packet) (err error) {
+//	if pkt.Pos+4 > len(pkt.Data) {
+//		err = errors.New("read int32 failed")
+//		return
+//	}
+
+//	buf := pkt.Data[pkt.Pos : pkt.Pos+2]
+//	ret := uint16(buf[0])<<8 | uint16(buf[1])
+//	*bz_int = BzUint16(ret)
+//	pkt.Pos += 2
+//	return
+// }
+
+// func (bz_int *BzUint16) Pack(pkt *Packet) (err error) {
+//	v := (uint16)(*bz_int)
+//	pkt.Data = append(pkt.Data, byte(v>>8), byte(v))
+//	pkt.Pos += 2
+//	return
+// }
+
+// type BzSint32 int32
+
+// func (bz_int *BzSint32) UnPack(pkt *Packet) (err error) {
+//	if pkt.Pos+4 > len(pkt.Data) {
+//		err = errors.New("read int32 failed")
+//		return
+//	}
+
+//	buf := pkt.Data[pkt.Pos : pkt.Pos+4]
+//	ret := int32(buf[0])<<24 | int32(buf[1])<<16 | int32(buf[2])<<8 |
+//		int32(buf[3])
+//	*bz_int = BzSint32(ret)
+//	pkt.Pos += 4
+//	return
+// }
+
+// func (bz_int *BzSint32) Pack(pkt *Packet) (err error) {
+//	v := (int32)(*bz_int)
+//	pkt.Data = append(pkt.Data, byte(v>>24), byte(v>>16),
+//		byte(v>>8), byte(v))
+//	pkt.Pos += 4
+//	return
+// }
+
+// type BzString string
+
+// func (bz_s *BzString) UnPack(pkt *Packet) (err error) {
+//	if pkt.Pos+2 > len(pkt.Data) {
+//		err = errors.New("read string header failed")
+//		return
+//	}
+
+//	var size BzUint16
+//	err = size.UnPack(pkt)
+//	if err != nil {
+//		return err
+//	}
+
+//	if pkt.Pos+int(size) > len(pkt.Data) {
+//		err = errors.New("read string Data failed")
+//		return
+//	}
+
+//	bytes := pkt.Data[pkt.Pos : pkt.Pos+int(size)]
+//	pkt.Pos += int(size)
+//	*bz_s = BzString(bytes)
+//	return
+// }
+
+// func (bz_s *BzString) Pack(pkt *Packet) (err error) {
+//	bytes := []byte(string(*bz_s))
+//	size := (BzUint16(len(bytes)))
+//	err = size.Pack(pkt)
+//	if err != nil {
+//		return
+//	}
+//	pkt.Data = append(pkt.Data, bytes...)
+//	pkt.Pos += len(bytes)
+//	return
+// }
+
+//------------------------------------------------------------------------------
+// base1
+//------------------------------------------------------------------------------
+
+// //下面是Bz包得各种处理.
+// func BzReadBool(p *Packet) (ret bool, err error) {
+//	b, _err := BzReadByte(p)
+
+//	if b != byte(1) {
+//		return false, _err
+//	}
+//	return true, _err
+// }
+
+// func BzReadByte(p *Packet) (ret byte, err error) {
+//	if p.Pos >= len(p.Data) {
+//		err = errors.New("read byte failed")
+//		return
+//	}
+
+//	ret = p.Data[p.Pos]
+//	p.Pos++
+//	return
+// }
+
+// func BzReadBytes(p *Packet) (ret []byte, err error) {
+//	if p.Pos+2 > len(p.Data) {
+//		err = errors.New("read bytes header failed")
+//		return
+//	}
+//	size, _ := p.ReadU16()
+//	if p.Pos+int(size) > len(p.Data) {
+//		err = errors.New("read bytes Data failed")
+//		return
+//	}
+
+//	ret = p.Data[p.Pos : p.Pos+int(size)]
+//	p.Pos += int(size)
+//	return
+// }
+
+// func BzReadS16(p *Packet) (ret int16, err error) {
+//	_ret, _err := p.ReadU16()
+//	ret = int16(_ret)
+//	err = _err
+//	return
+// }
+
+// func BzReadU24(p *Packet) (ret uint32, err error) {
+//	if p.Pos+3 > len(p.Data) {
+//		err = errors.New("read uint24 failed")
+//		return
+//	}
+
+//	buf := p.Data[p.Pos : p.Pos+3]
+//	ret = uint32(buf[0])<<16 | uint32(buf[1])<<8 | uint32(buf[2])
+//	p.Pos += 3
+//	return
+// }
+
+// func BzReadS24(p *Packet) (ret int32, err error) {
+//	_ret, _err := p.ReadU24()
+//	ret = int32(_ret)
+//	err = _err
+//	return
+// }
+
+// func BzReadU64(p *Packet) (ret uint64, err error) {
+//	if p.Pos+8 > len(p.Data) {
+//		err = errors.New("read uint64 failed")
+//		return
+//	}
+
+//	ret = 0
+//	buf := p.Data[p.Pos : p.Pos+8]
+//	for i, v := range buf {
+//		ret |= uint64(v) << uint((7-i)*8)
+//	}
+//	p.Pos += 8
+//	return
+// }
+
+// func BzReadS64(p *Packet) (ret int64, err error) {
+//	_ret, _err := p.ReadU64()
+//	ret = int64(_ret)
+//	err = _err
+//	return
+// }
+
+// func BzReadFloat32(p *Packet) (ret float32, err error) {
+//	bits, _err := p.ReadU32()
+//	if _err != nil {
+//		return float32(0), _err
+//	}
+
+//	ret = math.Float32frombits(bits)
+//	if math.IsNaN(float64(ret)) || math.IsInf(float64(ret), 0) {
+//		return 0, nil
+//	}
+
+//	return ret, nil
+// }
+
+// func BzReadFloat64(p *Packet) (ret float64, err error) {
+//	bits, _err := p.ReadU64()
+//	if _err != nil {
+//		return float64(0), _err
+//	}
+
+//	ret = math.Float64frombits(bits)
+//	if math.IsNaN(ret) || math.IsInf(ret, 0) {
+//		return 0, nil
+//	}
+
+//	return ret, nil
+// }
+
+//------------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------------
+
+// func BzWriteBool(v bool) {
+//	if v {
+//		p.Data = append(p.Data, byte(1))
+//	} else {
+//		p.Data = append(p.Data, byte(0))
+//	}
+//	p.Pos += 1
+// }
+
+// func BzWriteByte(v byte) (err error) {
+//	p.Data = append(p.Data, v)
+//	p.Pos += 1
+//	return
+// }
+
+// func BzWriteBytes(v []byte) (err error) {
+//	p.WriteU16(uint16(len(v)))
+//	p.Data = append(p.Data, v...)
+//	p.Pos += len(v)
+//	return
+// }
+
+// func BzWriteU16(v uint16) (err error) {
+//	p.Data = append(p.Data, byte(v>>8), byte(v))
+//	p.Pos += 2
+//	return
+// }
+
+// func BzWriteS16(v int16) (err error) {
+//	p.WriteU16(uint16(v))
+//	return
+// }
+
+// func BzWriteU24(v uint32) (err error) {
+//	p.Data = append(p.Data, byte(v>>16), byte(v>>8), byte(v))
+//	p.Pos += 3
+//	return
+// }
+
+// func BzWriteU64(v uint64) (err error) {
+//	p.Data = append(p.Data, byte(v>>56), byte(v>>48),
+//		byte(v>>40), byte(v>>32), byte(v>>24),
+//		byte(v>>16), byte(v>>8), byte(v))
+
+//	p.Pos += 8
+//	return
+// }
+
+// func BzWriteS64(v int64) (err error) {
+//	p.WriteU64(uint64(v))
+//	return
+// }
+
+// func BzWriteFloat32(f float32) (err error) {
+//	v := math.Float32bits(f)
+//	p.WriteU32(v)
+//	return
+// }
+
+// func BzWriteFloat64(f float64) (err error) {
+//	v := math.Float64bits(f)
+//	p.WriteU64(v)
+//	return
+// }
+
+
+//------------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------------
+
+
+
+// // if userInfo1 != userInfo2 {
+// //	t.Errorf("Pack And UnPack UserInfo error")
+// // }
+
+// pkt.Clear()
+// acc1 := pktAccount{userInfo1, userInfo2}
+// err = acc1.Pack(pkt)
+// if err != nil {
+//	t.Errorf("Pack userInfo1 error")
+// }
+// acc2 := pktAccount{}
+// pkt.Reset()
+// err = acc2.UnPack(pkt)
+// if err != nil {
+//	t.Errorf("Pack userInfo1 error %v", err)
+// }
+
+// if acc1 != acc2 {
+//	t.Errorf("Pack And UnPack Acc error")
+// }
+
+// // 从裸包中转为逻辑包，基础类型要作强制转换.
+// func (lpkt *pktUserInfo) UnPack(pkt *Packet) (err error) {
+//	lpkt.user_id, err = BzReads32(pkt)
+//	if err != nil {
+//		return err
+//	}
+
+//	lpkt.user_name, err = BzReadstring(pkt)
+//	if err != nil {
+//		return err
+//	}
+
+//	var int_v int32
+//	size, err := BzReadu16(pkt)
+//	for i := 0; i < int(size); i++ {
+//		int_v, err = BzReads32(pkt)
+//		if err != nil {
+//			return
+//		}
+//		lpkt.base_a = append(lpkt.base_a, int_v)
+//	}
+
+//	return
+// }
+
+// //将PacketI转为为Packet.
+// func (lpkt *pktUserInfo) Pack(pkt *Packet) (err error) {
+//	BzWrites32(pkt, lpkt.user_id)
+//	BzWritestring(pkt, lpkt.user_name)
+
+//	BzWriteu16(pkt, uint16(len(lpkt.base_a)))
+//	for _, value := range lpkt.base_a {
+//		BzWrites32(pkt, int32(value))
+//	}
+
+//	return nil
+// }
+
+// type pktAccount struct {
+//	user_info1 pktUserInfo
+//	user_info2 pktUserInfo
+// }
+
+// // 固定的逻辑包对裸包的处理模式：递归。
+
+// // 从裸包中转为逻辑包
+// func (lpkt *pktAccount) UnPack(pkt *Packet) (err error) {
+//	err = lpkt.user_info1.UnPack(pkt)
+//	if err != nil {
+//		return err
+//	}
+//	err = lpkt.user_info2.UnPack(pkt)
+//	if err != nil {
+//		return err
+//	}
+//	return
+// }
+
+// //将PacketI转为为Packet.
+// func (lpkt *pktAccount) Pack(pkt *Packet) (err error) {
+//	lpkt.user_info1.Pack(pkt)
+//	lpkt.user_info2.Pack(pkt)
+//	return
+// }

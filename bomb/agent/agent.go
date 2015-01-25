@@ -34,7 +34,7 @@ import (
 	"fmt"
 	"net"
 	//"strconv"
-	"github.com/user/bomb/packet"
+	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -47,11 +47,11 @@ type Session struct {
 	Conn  net.Conn
 	mutex *sync.Mutex
 	agent *Agent
-	pkt_handler packet.HandlerI
+	pkt_handler HandlerI
 }
 
 // 发送数据必须要加锁
-func (session *Session) Send(pkt packet.Packet) (err error) {
+func (session *Session) Send(pkt interface{}) (err error) {
 	session.mutex.Lock()
 	err = session.pkt_handler.Write(session.Conn, pkt)
 	session.mutex.Unlock()
@@ -69,16 +69,29 @@ func (session *Session) ResetKey(newkey int) (oldkey int) {
 
 type AgentI interface {
 	//处理由网络返回的包数据
-	HandlePkt(session *Session, pkt packet.Packet)
+	HandlePkt(session *Session, pkt interface{})
 	Start(session *Session)
 	Stop(session *Session)
 }
+
+
+// 包处理器接口
+// handle需要为每个session分配一个实例
+type HandlerI interface {
+	//从Reader中获取一个完整的包
+	Read(io.Reader) (interface{}, error)
+	//向Writer写入一个完整的包
+	Write(io.Writer, interface{}) error
+	//分配一个新的handler.
+	New() HandlerI
+}
+
 
 type Agent struct {
 	net_cls     string
 	net_ipfmt   string
 	agent_i     AgentI
-	pkt_handler packet.HandlerI
+	pkt_handler HandlerI
 	listener    net.Listener
 	wg          *sync.WaitGroup
 	die_chan    chan bool //用来控制所有handle-routine退出.
@@ -90,7 +103,7 @@ type Agent struct {
 }
 
 // 工厂.
-func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt packet.HandlerI) Agent {
+func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt HandlerI) Agent {
 	agent := Agent{net_cls: cls, net_ipfmt: ipfmt,
 		agent_i: agent_i, pkt_handler: pkt}
 	agent.wg = &sync.WaitGroup{}
@@ -229,13 +242,14 @@ func (agent *Agent) handle(session *Session) {
 		agent.wg.Done()
 		agent.delSessionKey(session.key)
 		session.Conn.Close()
-		fmt.Printf("session safe quit %d\n", session.key)
+		agent.agent_i.Stop(session)
 	}()
 
+	agent.agent_i.Start(session)
 	for {
 		pkt, err := session.pkt_handler.Read(session.Conn)
 		if err != nil {
-			fmt.Printf("Error Read %s\n", err.Error())
+			//fmt.Printf("Error Read %s\n", err.Error())
 			return
 		}
 		agent.agent_i.HandlePkt(session, pkt)
