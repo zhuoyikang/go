@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
+	//"time"
 	//"math"
 )
 
@@ -85,7 +85,7 @@ func (handle *HandlerBz) New() HandlerI {
 // 基础类型的Pack和UnPack
 //------------------------------------------------------------------------------
 
-func BzReadu16(datai []byte) (data []byte, ret uint16, err error) {
+func BzReaduint16(datai []byte) (data []byte, ret uint16, err error) {
 	data = datai
 	if 2 > len(data) {
 		err = errors.New("read uint16 failed")
@@ -98,13 +98,13 @@ func BzReadu16(datai []byte) (data []byte, ret uint16, err error) {
 	return
 }
 
-func BzWriteu16(datai []byte, v uint16) (data []byte, err error) {
+func BzWriteuint16(datai []byte, v uint16) (data []byte, err error) {
 	data = datai
 	data = append(data, byte(v>>8), byte(v))
 	return
 }
 
-func BzReads16(datai []byte) (data []byte, ret int16, err error) {
+func BzReadint16(datai []byte) (data []byte, ret int16, err error) {
 	if 2 > len(data) {
 		err = errors.New("read uint16 failed")
 		return
@@ -116,13 +116,13 @@ func BzReads16(datai []byte) (data []byte, ret int16, err error) {
 	return
 }
 
-func BzWrites16(datai []byte, v int16) (data []byte, err error) {
+func BzWriteint16(datai []byte, v int16) (data []byte, err error) {
 	data = datai
 	data = append(data, byte(v>>8), byte(v))
 	return
 }
 
-func BzReadu32(datai []byte) (data []byte, ret uint32, err error) {
+func BzReaduint32(datai []byte) (data []byte, ret uint32, err error) {
 	data = datai
 	if 4 > len(data) {
 		err = errors.New("read uint32 failed")
@@ -137,25 +137,25 @@ func BzReadu32(datai []byte) (data []byte, ret uint32, err error) {
 	return
 }
 
-func BzWriteu32(datai []byte, v uint32) (data []byte, err error) {
+func BzWriteuint32(datai []byte, v uint32) (data []byte, err error) {
 	data = datai
 	data = append(data, byte(v>>24), byte(v>>16),
 		byte(v>>8), byte(v))
 	return
 }
 
-func BzReads32(datai []byte) (data []byte, ret int32, err error) {
-	data, ret1, err := BzReadu32(datai)
+func BzReadint32(datai []byte) (data []byte, ret int32, err error) {
+	data, ret1, err := BzReaduint32(datai)
 	ret = int32(ret1)
 	return
 }
 
-func BzWrites32(datai []byte, v int32) (data []byte, err error) {
-	return BzWriteu32(datai, uint32(v))
+func BzWriteint32(datai []byte, v int32) (data []byte, err error) {
+	return BzWriteuint32(datai, uint32(v))
 }
 
 func BzReadstring(datai []byte) (data []byte, ret string, err error) {
-	data, size, err := BzReadu16(datai)
+	data, size, err := BzReaduint16(datai)
 	if err != nil {
 		return
 	}
@@ -171,7 +171,7 @@ func BzReadstring(datai []byte) (data []byte, ret string, err error) {
 
 func BzWritestring(datai []byte, str string) (data []byte, err error) {
 	bytes := []byte(str)
-	data, err = BzWriteu16(datai, uint16(len(bytes)))
+	data, err = BzWriteuint16(datai, uint16(len(bytes)))
 	data = append(data, bytes...)
 	return
 }
@@ -188,41 +188,8 @@ func MakePacketData(api uint16, datai []byte) (data []byte) {
 
 type BzHandlerMAP map[uint16]func(*Session, *BzPacket)
 
-//Step2. 实现一个Agent.
+
+// 所有的Bz包都需要继承这个Agent.
 type AgentBz struct {
 	handlerMap BzHandlerMAP
-}
-
-func (gs *AgentBz) Start(session *Session) {
-	fmt.Printf("%s\n", "bz session start")
-}
-
-func (gs *AgentBz) HandlePkt(session *Session, pkti interface{}) {
-	fmt.Printf("%s\n", "bz session handle")
-	pkt := pkti.(*BzPacket)
-	handler := gs.handlerMap[pkt.Type]
-	if handler == nil {
-		return
-	}
-	handler(session, pkt)
-	return
-}
-
-func (gs *AgentBz) Stop(session *Session) {
-	fmt.Printf("%s\n", "bz session stop")
-}
-
-//Step3. main
-func AgentBzMain() {
-	agentBz := &AgentBz{}
-	agentBz.handlerMap = MakeBzDemoHandler()
-	agt := MakeAgent("tcp", "0.0.0.0:8080", agentBz, &HandlerBz{})
-	go func() {
-		time.Sleep(time.Second * 60)
-		fmt.Printf("%s\n", "test stop")
-		agt.Stop()
-	}()
-	agt.Signal()
-	agt.Run()
-	fmt.Printf("%s\n", "end")
 }

@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	agent.AgentBzMain()
+	agent.AgentBzDemoMain()
 }

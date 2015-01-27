@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 func test1(data []byte) {
 	data = append(data, byte(1), byte(2), byte(3))
 	fmt.Printf("t1 %v\n", data)
@@ -29,15 +28,15 @@ func main() {
 	fmt.Println("已连接服务器")
 	defer conn.Close()
 
-	userInfo := &agent.PktUserInfo{
+	userInfo := &agent.PktUserLoginReq{
 		UserId:   23,
 		UserName: "good",
 		BaseArr:  []int32{1, 2, 4, 5},
 	}
 
 	fmt.Printf("%v\n", userInfo)
-	data, err := agent.BzWritePktUserInfo([]byte{}, userInfo)
-	data = agent.MakePacketData(0, data)
+	data, err := agent.BzWritePktUserLoginReq([]byte{}, userInfo)
+	data = agent.MakePacketData(agent.BZ_USERLOGINREQ, data)
 
 	conn.Write(data)
 	time.Sleep(1 * time.Second)
