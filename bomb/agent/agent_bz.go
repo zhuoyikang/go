@@ -85,6 +85,23 @@ func (handle *HandlerBz) New() HandlerI {
 // 基础类型的Pack和UnPack
 //------------------------------------------------------------------------------
 
+func BzReadbyte(datai []byte) (data []byte, ret byte, err error) {
+	data = datai
+	if 1 > len(data) {
+		err = errors.New("read byte failed")
+		return
+	}
+	ret = data[0]
+	data = data[1:]
+	return
+}
+
+func BzWritebyte(datai []byte, v byte) (data []byte, err error) {
+	data = datai
+	data = append(data, byte(v))
+	return
+}
+
 func BzReaduint16(datai []byte) (data []byte, ret uint16, err error) {
 	data = datai
 	if 2 > len(data) {
@@ -188,8 +205,8 @@ func MakePacketData(api uint16, datai []byte) (data []byte) {
 
 type BzHandlerMAP map[uint16]func(*Session, *BzPacket)
 
-
 // 所有的Bz包都需要继承这个Agent.
 type AgentBz struct {
+	Agent
 	handlerMap BzHandlerMAP
 }

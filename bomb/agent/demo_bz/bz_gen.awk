@@ -14,6 +14,7 @@ BEGIN {
 
 # 类型别名.
 function LoadTypeAlias() {
+    TypeMap["byte"] = "byte"
     TypeMap["uint32"] = "uint32"
     TypeMap["int32"] = "int32"
 
@@ -91,14 +92,20 @@ function OutPutPayLoad() {
 # 输出go的struct结构.
 function OutPutPayLoadStruct(Name) {
     count=PayLoadList[Name,"count"]
-    printf("type Pkt%s struct {\n", Name) > "demo.go"
+    printf("type %s struct {\n", Name) > "demo.go"
     for(StructI=1; StructI<= count; StructI++) {
         name = PayLoadList[Name,StructI,"name"]
         type = PayLoadList[Name,StructI,"type"]
         addtion = PayLoadList[Name,StructI,"addtion"]
         if(type == "array") {
+            if(TypeMap[addtion]=="") {
+                addtion="*"addtion
+            }
             printf("\t%s []%s\n", name,addtion) > "demo.go"
         } else {
+            if(TypeMap[type]=="") {
+                type="*"type
+            }
             printf("\t%s %s\n", name,type) > "demo.go"
         }
     }
@@ -116,7 +123,7 @@ function OutPutAllPayLoadStruct() {
 # 输出所有的API常量定义
 function OutPutAllApiConst() {
     print "const (" > "demo.go"
-    for (APIi = 1; APIi < ApiCount; APIi++) {
+    for (APIi = 1; APIi <= ApiCount; APIi++) {
         printf("\tBZ_%s = %s\n", toupper(ApiList[APIi, "name"]),
                ApiList[APIi, "packet_type"]) > "demo.go"
     }
@@ -147,17 +154,23 @@ function OutPutErrCheck(prefix) {
 # 输出序列化:read
 function OutPutSerializeRead(Name) {
     count=PayLoadList[Name,"count"]
-    printf("func BzReadPkt%s(datai []byte) (data []byte, ret *Pkt%s, err error) {\n",
+    printf("func BzRead%s(datai []byte) (data []byte, ret *%s, err error) {\n",
            Name,Name) > "demo.go"
     printf("\tdata = datai\n") > "demo.go"
-    printf("\tret = &Pkt%s{}\n",Name) > "demo.go"
+    printf("\tret = &%s{}\n",Name) > "demo.go"
     for(Filedi = 1 ;Filedi<= count; Filedi++) {
         type = PayLoadList[Name,Filedi,"type"]
         addtion = PayLoadList[Name,Filedi,"addtion"]
         name = PayLoadList[Name,Filedi,"name"]
 
         if (type == "array") {
-            printf("\tvar %s_v %s\n", name, addtion) > "demo.go"
+
+            if(TypeMap[addtion]=="") {
+                addtion1="*"addtion
+            }else{
+                addtion1=addtion
+            }
+            printf("\tvar %s_v %s\n", name, addtion1) > "demo.go"
             printf("\tdata, %s_size, err := BzReaduint16(data)\n", name) > "demo.go"
             printf("\tfor i := 0; i < int(%s_size); i++ {\n", name)  > "demo.go"
             printf("\t\tdata, %s_v, err = BzRead%s(data)\n",name,addtion) > "demo.go"
@@ -178,7 +191,7 @@ function OutPutSerializeRead(Name) {
 # 输出序列化:write
 function OutPutSerializeWrite(Name) {
     count=PayLoadList[Name,"count"]
-    printf("func BzWritePkt%s(datai []byte, ret *Pkt%s) (data []byte, err error) {\n",
+    printf("func BzWrite%s(datai []byte, ret *%s) (data []byte, err error) {\n",
            Name,Name) > "demo.go"
     printf("\tdata = datai\n") > "demo.go"
     for(Filedi = 1 ;Filedi<= count; Filedi++) {

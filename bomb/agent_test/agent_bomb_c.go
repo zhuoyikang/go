@@ -28,17 +28,17 @@ func main() {
 	fmt.Println("已连接服务器")
 	defer conn.Close()
 
-	userInfo := &agent.PktUserLoginReq{
+	userInfo := &agent.UserLoginReq{
 		UserId:   23,
 		UserName: "good",
 		BaseArr:  []int32{1, 2, 4, 5},
 	}
 
 	fmt.Printf("%v\n", userInfo)
-	data, err := agent.BzWritePktUserLoginReq([]byte{}, userInfo)
+	data, err := agent.BzWriteUserLoginReq([]byte{}, userInfo)
 	data = agent.MakePacketData(agent.BZ_USERLOGINREQ, data)
 
 	conn.Write(data)
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 	fmt.Printf("%s %v %d\n", "client quit", data, len(data))
 }

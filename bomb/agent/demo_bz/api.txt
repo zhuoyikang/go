@@ -4,12 +4,37 @@
 # 服务端通知包_ntf结束.
 
 
-packet_type:0
+packet_type:1
 name:UserLoginReq
 payload:UserLoginReq
-desc:玩家udid流失情况
+desc:玩家登陆包
 
 packet_type:2
 name:UserLoginAck
 payload:UserLoginAck
+desc:玩家登陆回复包
+
+packet_type:3
+name:MapReq
+payload:MapReq
+desc:玩家请求自己所在的地图数据
+
+packet_type:4
+name:MapAck
+payload:MapAck
+desc:服务器回复地图数据
+
+packet_type:5
+name:BombExplodeEvent
+payload:BombExplodeEvent
+desc:发生了炸弹爆炸事件
+
+packet_type:6
+name:BombSetActReq
+payload:BombSetAct
+desc:玩家设置炸弹
+
+packet_type:7
+name:RoomNtf
+payload:RoomNtf
 desc:服务器回复用户登陆请求包.

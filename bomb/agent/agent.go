@@ -47,13 +47,17 @@ type Session struct {
 	Conn  net.Conn
 	mutex *sync.Mutex
 	agent *Agent
-	pkt_handler HandlerI
+	PktHandler HandlerI
+}
+
+func (session *Session) SessionId() int {
+	return session.key
 }
 
 // 发送数据必须要加锁
 func (session *Session) Send(pkt interface{}) (err error) {
 	session.mutex.Lock()
-	err = session.pkt_handler.Write(session.Conn, pkt)
+	err = session.PktHandler.Write(session.Conn, pkt)
 	session.mutex.Unlock()
 	return
 }
@@ -91,7 +95,7 @@ type Agent struct {
 	net_cls     string
 	net_ipfmt   string
 	agent_i     AgentI
-	pkt_handler HandlerI
+	PktHandler HandlerI
 	listener    net.Listener
 	wg          *sync.WaitGroup
 	die_chan    chan bool //用来控制所有handle-routine退出.
@@ -105,10 +109,10 @@ type Agent struct {
 // 工厂.
 func MakeAgent(cls string, ipfmt string, agent_i AgentI, pkt HandlerI) Agent {
 	agent := Agent{net_cls: cls, net_ipfmt: ipfmt,
-		agent_i: agent_i, pkt_handler: pkt}
+		agent_i: agent_i, PktHandler: pkt}
 	agent.wg = &sync.WaitGroup{}
 	agent.die_chan = make(chan bool)
-	agent.pkt_handler = pkt
+	agent.PktHandler = pkt
 	//agent.session_key_mutex = &sync.Mutex{}
 	agent.session_map_mutex = &sync.Mutex{}
 	agent.session_map = make(map[int]*Session)
@@ -224,9 +228,9 @@ func (agent *Agent) run() {
 			return
 		}
 		session_key := agent.newSessionKey()
-		handler := agent.pkt_handler.New()
+		handler := agent.PktHandler.New()
 		session := &Session{Conn: conn, mutex: &sync.Mutex{},
-			pkt_handler:handler,
+			PktHandler:handler,
 			key: session_key, agent: agent}
 		//session.Buffer = make([]byte, PREALLOC_BUFSIZE)
 		go agent.handle(session)
@@ -247,7 +251,7 @@ func (agent *Agent) handle(session *Session) {
 
 	agent.agent_i.Start(session)
 	for {
-		pkt, err := session.pkt_handler.Read(session.Conn)
+		pkt, err := session.PktHandler.Read(session.Conn)
 		if err != nil {
 			//fmt.Printf("Error Read %s\n", err.Error())
 			return

@@ -1,0 +1,18 @@
+#用户登陆发送包.
+UserLoginReq=
+UserId int
+UserName string
+BaseArr array int
+===
+
+# 登陆回复包
+UserLoginAck=
+udid string
+name string
+level int32
+===
+
+# 房间建立
+RoomNtf=
+room_id int32
+===

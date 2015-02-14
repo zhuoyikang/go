@@ -28,3 +28,57 @@ udid string
 name string
 level int32
 ===
+
+#用户登陆发送包.
+MapReq=
+skip int
+===
+
+BombMap=
+mmap array byte
+===
+
+# 登陆回复包
+MapAck=
+mmap BombMap
+===
+
+# 炸弹属性
+Bomb=
+x int
+y int
+r int
+time int
+===
+
+BombList=
+list array Bomb
+===
+
+# 炸弹爆炸事件
+BombExplodeEvent=
+bomb Bomb
+===
+
+# 炸弹设置行为
+BombSetAct=
+bomb Bomb
+===
+
+
+# 格子属性
+MapCell=
+x int
+y int
+t byte
+===
+
+# 格子数组
+MapCellList=
+cells array MapCell
+===
+
+# 房间建立
+RoomNtf=
+room_id int32
+===

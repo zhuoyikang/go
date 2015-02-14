@@ -1,15 +1,14 @@
-# 格式说明=
-# 客户端请求名_req结束.
-# 服务端回复包_ack结束.
-# 服务端通知包_ntf结束.
-
-
 packet_type:0
 name:UserLoginReq
 payload:UserLoginReq
 desc:玩家udid流失情况
 
-packet_type:2
+packet_type:1
 name:UserLoginAck
 payload:UserLoginAck
+desc:服务器回复用户登陆请求包.
+
+packet_type:2
+name:RoomNtf
+payload:RoomNtf
 desc:服务器回复用户登陆请求包.

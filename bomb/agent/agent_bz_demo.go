@@ -46,8 +46,8 @@ func AgentBzDemoMain() {
 }
 
 
-// 玩家登陆包
-func BzUserLoginReq(sess *Session, pkt *BzPacket) {
-	_, userInfo, _ := BzReadPktUserLoginReq(pkt.Data)
-	fmt.Printf("%v\n", userInfo)
-}
+// // 玩家登陆包
+// func BzUserLoginReq(sess *Session, pkt *BzPacket) {
+// 	_, userInfo, _ := BzReadPktUserLoginReq(pkt.Data)
+// 	fmt.Printf("%v\n", userInfo)
+// }
