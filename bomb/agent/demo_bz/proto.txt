@@ -78,7 +78,25 @@ MapCellList=
 cells array MapCell
 ===
 
+#坐标
+Point=
+x int
+y int
+===
+
 # 房间建立
 RoomNtf=
-room_id int32
+room_id int
+self_id int
+p1_id int
+p2_id int
+p1_point Point
+p2_point Point
+===
+
+
+# 坐标改变
+PositionChg=
+p Point
+player_id int
 ===

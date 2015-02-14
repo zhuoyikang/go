@@ -56,7 +56,7 @@ func (mgr *RoomMgr) Worker() {
 		} else if mgr.waitChan == joinChan {
 			mgr.waitChan = nil
 		} else {
-			MakeRoom(*joinChan, *mgr.waitChan)
+			MakeRoom(joinChan, mgr.waitChan)
 			mgr.waitChan = nil
 		}
 	}
@@ -94,7 +94,9 @@ type HandlerBomb struct {
 const (
 	MSG_HEART  = 0
 	MSG_CLIENT = 1
-	MSG_JOIN   = 2 //匹配成功
+	MSG_JOIN   = 2  //匹配成功
+	MSG_CLOSE  = 3  //房间关闭
+	MSG_POSCHG = 4 //坐标改变
 )
 
 func (handle *HandlerBomb) New() HandlerI {
@@ -114,22 +116,23 @@ func (handle *HandlerBomb) HandleClientMsg(session *Session, msg ClientMsg) {
 func (handle *HandlerBomb) Service(session *Session) {
 	for {
 		msg, err := <- handle.channel
-		fmt.Printf("get msg %v %v\n", msg, err)
 		if err == false {
-			close(handle.dieChan)
 			return
 		}
 		switch msg.msg_type {
 		case MSG_HEART:
 			continue;
+		case MSG_CLOSE:
+			session.Close();
 		case MSG_JOIN:
-			data, _ := BzWriteRoomNtf([]byte{}, &RoomNtf{})
+			roomJoin := msg.data.(RoomJoin)
+			data, _ := BzWriteRoomNtf([]byte{}, &roomJoin.roomNtf)
 			data = MakePacketData(BZ_ROOMNTF, data)
+			fmt.Printf("sid:%d data %v\n", session.SessionId(), data);
 			session.Send(data)
-			fmt.Printf("%s\n", "match ok")
 		case MSG_CLIENT:
-			// 处理客户端消息
 			clientMsg := msg.data.(ClientMsg)
+			fmt.Printf("msg client %v \n", clientMsg);
 			handle.HandleClientMsg(session, clientMsg)
 		}
 	}
@@ -149,7 +152,6 @@ func (gs *AgentBomb) Start(session *Session) {
 }
 
 func (gs *AgentBomb) HandlePkt(session *Session, pkti interface{}) {
-	fmt.Printf("%s\n", "bz session handle")
 	pkt := pkti.(*BzPacket)
 	handler := gs.handlerMap[pkt.Type]
 	if handler == nil {
@@ -163,7 +165,6 @@ func (gs *AgentBomb) HandlePkt(session *Session, pkti interface{}) {
 
 // 停止一个Session
 func (gs *AgentBomb) Stop(session *Session) {
-	fmt.Printf("%s\n", "bz session stop")
 	handle := session.PktHandler.(*HandlerBomb)
 	close(handle.channel)
 	<-handle.dieChan
@@ -203,6 +204,15 @@ func BzBombSetActReq(sess *Session, pkt *BzPacket) {
 	_, bombSet, _ := BzReadBombSetAct(pkt.Data)
 	fmt.Printf("%v\n", bombSet)
 }
+
+
+// 位置设置
+func BzPositionChgReq(sess *Session, pkt *BzPacket) {
+	_, posChg, _ := BzReadPositionChg(pkt.Data)
+	fmt.Printf("pos %d %d %d\n", posChg.p.x ,posChg.p.y, posChg.player_id)
+}
+
+
 
 /*------------------------------------------------------------------------------
  游戏逻辑
@@ -262,8 +272,8 @@ type RoomMsg struct {
 // 房间
 type Room struct {
 	msg   chan BombMsg // 玩家通过chan和Room通信.
-	p1    chan BombMsg
-	p2    chan BombMsg
+	p1    *chan BombMsg
+	p2    *chan BombMsg
 	mmap  *BombMap  //地图
 	bombs *BombList //炸弹列表
 }
@@ -273,14 +283,34 @@ func MakeBombList() *BombList {
 	return &BombList{list: make([]*Bomb, 0)}
 }
 
+type RoomJoin struct {
+	roomNtf RoomNtf;
+	roomChan *chan BombMsg
+}
+
 // 创建房间
-func MakeRoom(p1 chan BombMsg, p2 chan BombMsg) *Room {
-	room := Room{p1: p2, p2: p2}
+func MakeRoom(p1 *chan BombMsg, p2 *chan BombMsg) *Room {
+	room := Room{p1: p1, p2: p2}
 	room.msg = make(chan BombMsg)
 	room.mmap = MakeBombMap(MAP_WIDTH, MAP_HIGH)
 	room.bombs = MakeBombList()
-	p1 <- BombMsg{msg_type :MSG_JOIN}
-	p2 <- BombMsg{msg_type :MSG_JOIN}
+	point_1 := Point{x:1, y:1};
+	point_2 := Point{x:36, y:24};
+	roomNtf1 := RoomNtf{room_id:124, p1_id:1, p2_id:2,
+		self_id:1,
+		p1_point: &point_1,
+		p2_point: &point_2,
+	}
+	roomNtf2 := RoomNtf{room_id:124, p1_id:1, p2_id:2,
+		self_id:2,
+		p1_point: &point_1,
+		p2_point: &point_2,
+	}
+
+	*p1 <- BombMsg{msg_type :MSG_JOIN, data: RoomJoin{roomNtf:roomNtf1,
+		roomChan: &room.msg }}
+	*p2 <- BombMsg{msg_type :MSG_JOIN, data: RoomJoin{roomNtf:roomNtf2,
+		roomChan: &room.msg }}
 	go room.Worker()
 	return &room
 }
@@ -290,16 +320,19 @@ func (room *Room) Worker() {
 	var msg BombMsg
 	var status bool
 	for {
-		fmt.Printf("%s\n", "room service")
 		select {
-		case msg, status = <-room.p1:
-			fmt.Printf("msg %v status %v\n", msg, status)
-		case msg, status = <-room.p2:
-			fmt.Printf("msg %v status %v\n", msg, status)
-		}
-		if status == false {
-			fmt.Printf("%s\n", "room service out")
-			break
+		case msg, status = <- *room.p1:
+			if status == false {
+				fmt.Printf("%s %v\n", "p1 room service out", msg)
+				*room.p2 <- BombMsg{msg_type :MSG_CLOSE};
+				return
+			}
+		case msg, status = <- *room.p2:
+			if status == false {
+				fmt.Printf("%s %v\n", "p2 room service out", msg)
+				*room.p1 <- BombMsg{msg_type :MSG_CLOSE};
+				return
+			}
 		}
 	}
 }

@@ -55,6 +55,13 @@ func (session *Session) SessionId() int {
 }
 
 // 发送数据必须要加锁
+func (session *Session) Close()  {
+	session.Conn.Close();
+	return
+}
+
+
+// 发送数据必须要加锁
 func (session *Session) Send(pkt interface{}) (err error) {
 	session.mutex.Lock()
 	err = session.PktHandler.Write(session.Conn, pkt)
@@ -184,7 +191,6 @@ func (agent *Agent) Stop() {
 	agent.listener.Close()
 	close(agent.die_chan)
 	for _, v := range agent.session_map {
-		agent.agent_i.Stop(v)
 		v.Conn.Close()
 	}
 }
@@ -254,6 +260,7 @@ func (agent *Agent) handle(session *Session) {
 		pkt, err := session.PktHandler.Read(session.Conn)
 		if err != nil {
 			//fmt.Printf("Error Read %s\n", err.Error())
+			agent.agent_i.Stop(session)
 			return
 		}
 		agent.agent_i.HandlePkt(session, pkt)

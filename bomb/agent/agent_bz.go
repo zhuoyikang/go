@@ -2,7 +2,7 @@ package agent
 
 import (
 	"errors"
-	"fmt"
+	//"fmt"
 	"io"
 	//"time"
 	//"math"
@@ -37,7 +37,6 @@ func (handle *HandlerBz) Read(reader io.Reader) (interface{}, error) {
 	}
 
 	pkt_length := uint16(handle.buffer[0])<<8 | uint16(handle.buffer[1])
-	fmt.Printf("pkt_length: %v\n", pkt_length)
 	//后两个字节包类型
 	n, err = io.ReadFull(reader, handle.buffer)
 	//fmt.Printf("n2: %v\n", n)
@@ -45,7 +44,7 @@ func (handle *HandlerBz) Read(reader io.Reader) (interface{}, error) {
 		return pkt, err
 	}
 	pkt_type := uint16(handle.buffer[0])<<8 | uint16(handle.buffer[1])
-	fmt.Printf("pkt_type: %v\n", pkt_type)
+	//fmt.Printf("pkt_type: %v pkt_length %v\n", pkt_type, pkt_length)
 
 	buffer := make([]byte, pkt_length-4)
 	n, err = io.ReadFull(reader, buffer)
@@ -59,21 +58,21 @@ func (handle *HandlerBz) Read(reader io.Reader) (interface{}, error) {
 }
 
 func (handle *HandlerBz) Write(writer io.Writer, pkt_i interface{}) error {
-	pkt := pkt_i.(*BzPacket)
-	want := len(pkt.Data)
+	data := pkt_i.([]byte)
+	want := len(data)
 	n := 0
 	for {
-		ret, err := writer.Write(pkt.Data)
-		switch {
-		case (err != nil):
+		ret, err := writer.Write(data)
+		if (err != nil) {
 			return err
+		}
+		n+=ret;
+		switch {
 		case n == want:
 			return nil
 		case n > want:
-			fmt.Printf("%s\n", "write bug")
 			return nil
 		}
-		n += ret
 	}
 }
 

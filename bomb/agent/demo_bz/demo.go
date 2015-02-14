@@ -8,6 +8,7 @@ const (
 	BZ_BOMBEXPLODEEVENT = 5
 	BZ_BOMBSETACTREQ = 6
 	BZ_ROOMNTF = 7
+	BZ_POSITIONCHGREQ = 8
 )
 
 type UserLoginReq struct {
@@ -63,8 +64,23 @@ type MapCellList struct {
 	cells []*MapCell
 }
 
+type Point struct {
+	x int32
+	y int32
+}
+
 type RoomNtf struct {
 	room_id int32
+	self_id int32
+	p1_id int32
+	p2_id int32
+	p1_point *Point
+	p2_point *Point
+}
+
+type PositionChg struct {
+	p *Point
+	player_id int32
 }
 
 func MakeBzGsHandler() BzHandlerMAP {
@@ -72,6 +88,7 @@ func MakeBzGsHandler() BzHandlerMAP {
 		BZ_USERLOGINREQ: BzUserLoginReq,
 		BZ_MAPREQ: BzMapReq,
 		BZ_BOMBSETACTREQ: BzBombSetActReq,
+		BZ_POSITIONCHGREQ: BzPositionChgReq,
 	}
 	return ProtocalHandler
 }
@@ -319,10 +336,49 @@ func BzWriteMapCellList(datai []byte, ret *MapCellList) (data []byte, err error)
 	}
 	return
 }
+func BzReadPoint(datai []byte) (data []byte, ret *Point, err error) {
+	data = datai
+	ret = &Point{}
+	data, ret.x, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.y, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	return
+}
+func BzWritePoint(datai []byte, ret *Point) (data []byte, err error) {
+	data = datai
+	data, err = BzWriteint32(data, ret.x)
+	data, err = BzWriteint32(data, ret.y)
+	return
+}
 func BzReadRoomNtf(datai []byte) (data []byte, ret *RoomNtf, err error) {
 	data = datai
 	ret = &RoomNtf{}
 	data, ret.room_id, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.self_id, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.p1_id, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.p2_id, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.p1_point, err = BzReadPoint(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.p2_point, err = BzReadPoint(data)
  	if err != nil {
  		return
  	}
@@ -331,5 +387,29 @@ func BzReadRoomNtf(datai []byte) (data []byte, ret *RoomNtf, err error) {
 func BzWriteRoomNtf(datai []byte, ret *RoomNtf) (data []byte, err error) {
 	data = datai
 	data, err = BzWriteint32(data, ret.room_id)
+	data, err = BzWriteint32(data, ret.self_id)
+	data, err = BzWriteint32(data, ret.p1_id)
+	data, err = BzWriteint32(data, ret.p2_id)
+	data, err = BzWritePoint(data, ret.p1_point)
+	data, err = BzWritePoint(data, ret.p2_point)
+	return
+}
+func BzReadPositionChg(datai []byte) (data []byte, ret *PositionChg, err error) {
+	data = datai
+	ret = &PositionChg{}
+	data, ret.p, err = BzReadPoint(data)
+ 	if err != nil {
+ 		return
+ 	}
+	data, ret.player_id, err = BzReadint32(data)
+ 	if err != nil {
+ 		return
+ 	}
+	return
+}
+func BzWritePositionChg(datai []byte, ret *PositionChg) (data []byte, err error) {
+	data = datai
+	data, err = BzWritePoint(data, ret.p)
+	data, err = BzWriteint32(data, ret.player_id)
 	return
 }

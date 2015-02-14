@@ -38,3 +38,8 @@ packet_type:7
 name:RoomNtf
 payload:RoomNtf
 desc:服务器回复用户登陆请求包.
+
+packet_type:8
+name:PositionChgReq
+payload:PositionChg
+desc:客户端发送给服务器，坐标改变.
